@@ -1,6 +1,6 @@
-import logging
 import json
 import os
+import logging
 from fastapi import FastAPI, Request
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -12,34 +12,42 @@ PORT = 10000
 
 app = FastAPI()
 bot = Application.builder().token(TOKEN).build()
+
+# Загрузка состояний пользователей
 if os.path.exists("users.json"):
     with open("users.json", "r") as f:
         started_users = set(json.load(f))
 else:
     started_users = set()
+
 # Логирование
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO
 )
 
-# Хранилище пользователей (простое решение в памяти)
-started_users = set()
-
-# Генератор клавиатуры
 def get_keyboard(user_id: int):
-    buttons = [
-        [KeyboardButton("Начать обучение")],
-        [KeyboardButton("Магазин")],
-        [KeyboardButton("Описание курса")]
-    ]
-    
+    """Генерирует клавиатуру в зависимости от состояния"""
     if user_id in started_users:
-        buttons.insert(1, [KeyboardButton("Продолжить обучение")])
-    
-    return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+        # После начала обучения
+        return ReplyKeyboardMarkup(
+            [
+                [KeyboardButton("Продолжить обучение")],
+                [KeyboardButton("Начать сначала")]  # Новая кнопка внизу
+            ],
+            resize_keyboard=True
+        )
+    else:
+        # До начала обучения
+        return ReplyKeyboardMarkup(
+            [
+                [KeyboardButton("Начать обучение")],
+                [KeyboardButton("Магазин")],
+                [KeyboardButton("Описание курса")]
+            ],
+            resize_keyboard=True
+        )
 
-# Обработчик /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     await update.message.reply_text(
@@ -49,27 +57,45 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=get_keyboard(user_id)
     )
 
-# Обработчик сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     text = update.message.text
-    
-    responses = {
-        "Начать обучение": ("🚀 Обучение начато! Теперь доступно продолжение.", True),
-        "Продолжить обучение": ("🔁 Продолжаем урок...", False),
-        "Магазин": ("🛍️ Открываем магазин...", False),
-        "Описание курса": ("📚 Курс по плетению корзин!\nПодробная инструкция...", False)
-    }
-    
-    if text in responses:
-        response_text, should_start = responses[text]
-        if text == "Начать обучение":
-            started_users.add(user_id)
-        await update.message.reply_text(response_text, reply_markup=get_keyboard(user_id))
+
+    if text == "Начать обучение":
+        started_users.add(user_id)
+        await update.message.reply_text(
+            "🚀 Обучение начато! Выберите действие:",
+            reply_markup=get_keyboard(user_id)
+        )
+
+    elif text == "Начать сначала":
+        started_users.discard(user_id)
+        await update.message.reply_text(
+            "🔄 Обучение сброшено! Начните заново:",
+            reply_markup=get_keyboard(user_id)
+        )
+
+    elif text == "Продолжить обучение":
+        if user_id in started_users:
+            await update.message.reply_text("➡️ Продолжаем урок...")
+        else:
+            await update.message.reply_text(
+                "⚠️ Сначала начните обучение!",
+                reply_markup=get_keyboard(user_id)
+            )
+
+    elif text == "Магазин":
+        await update.message.reply_text("🛍️ Магазин временно закрыт")
+
+    elif text == "Описание курса":
+        await update.message.reply_text(
+            "📚 Курс по плетению корзин!\n"
+            "Подробная инструкция шаг за шагом!"
+        )
+
     else:
         await update.message.reply_text("❌ Неизвестная команда")
 
-# Вебхук и остальной код остается без изменений
 @app.post("/webhook")
 async def webhook(request: Request):
     try:
@@ -91,11 +117,8 @@ async def init():
 
 @app.on_event("shutdown")
 async def shutdown():
-    # Сохраняем состояния
     with open("users.json", "w") as f:
         json.dump(list(started_users), f)
-    
-    # Останавливаем бота
     await bot.stop()
     await bot.shutdown()
 
