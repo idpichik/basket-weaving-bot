@@ -11,7 +11,7 @@ def start(update: Update, context: CallbackContext) -> None:
 # Основная функция, которая запускает бота
 def main():
     # Создаем объект Updater с твоим токеном
-    updater = Updater(TOKEN)
+    updater = Updater(7880774464:AAGBEe1pYDmT-NzWvVgKJBfyrCfj7mLSu8A)
 
     # Получаем диспетчер, чтобы добавить обработчики команд
     dispatcher = updater.dispatcher
