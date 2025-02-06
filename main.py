@@ -1,9 +1,8 @@
+from flask import Flask, request
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import logging
 import json
-from flask import Flask, request
-from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
-from aiohttp import web
 
 app = Flask(__name__)
 
@@ -20,7 +19,9 @@ async def start(update, context):
         [KeyboardButton("Магазин")],
         [KeyboardButton("Описание курса")]
     ]
+
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
     await update.message.reply_text(
         "Привет! Я обучающий бот. Выберите один из вариантов ниже:",
         reply_markup=reply_markup
@@ -39,9 +40,9 @@ async def button_click(update, context):
     elif user_input == "Описание курса":
         await update.message.reply_text("Описание курса: \nЭтот курс поможет вам...")
 
-# Вебхук для обработки сообщений от Telegram
+# Синхронный вебхук для обработки сообщений от Telegram
 @app.route('/webhook', methods=['POST'])
-async def webhook():
+def webhook():
     json_str = request.get_data(as_text=True)  # Получаем данные как строку
     update = Update.de_json(json.loads(json_str), telegram_bot.bot)  # Преобразуем строку в словарь
     telegram_bot.process_new_updates([update])
