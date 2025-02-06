@@ -1,73 +1,75 @@
+import logging
 from fastapi import FastAPI, Request
-from pydantic import BaseModel
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-import logging
-import os
+
+# Конфигурация
+TOKEN = "7880774464:AAGBEe1pYDmT-NzWvVgKJBfyrCfj7mLSu8A"
+WEBHOOK_URL = "https://basket-weaving-bot.onrender.com/webhook"
+PORT = 10000
 
 app = FastAPI()
+bot = Application.builder().token(TOKEN).build()
 
-TOKEN = os.getenv('TELEGRAM_TOKEN', '7880774464:AAGBEe1pYDmT-NzWvVgKJBfyrCfj7mLSu8A')
+# Логирование
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO
+)
 
-# Инициализация Telegram бота
-telegram_bot = Application.builder().token(TOKEN).build()
-
-# Добавляем обработчики
-telegram_bot.add_handler(CommandHandler("start", start))
-telegram_bot.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_click))
-
-# Приветственное сообщение с кнопками меню
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
+# Клавиатура
+def get_keyboard():
+    return ReplyKeyboardMarkup([
         [KeyboardButton("Начать обучение")],
         [KeyboardButton("Продолжить обучение")],
         [KeyboardButton("Магазин")],
         [KeyboardButton("Описание курса")]
-    ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    ], resize_keyboard=True)
 
+# Команды
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Привет! Я обучающий бот. Выберите один из вариантов ниже:",
-        reply_markup=reply_markup
+        "Привет! Выберите действие:",
+        reply_markup=get_keyboard()
     )
 
-# Обработчики команд для кнопок
-async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_input = update.message.text
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+    response = {
+        "Начать обучение": "🚀 Начинаем обучение!",
+        "Продолжить обучение": "🔁 Продолжаем урок...",
+        "Магазин": "🛍️ Открываем магазин...",
+        "Описание курса": "📚 Курс по плетению корзин!"
+    }.get(text, "❌ Неизвестная команда")
+    
+    await update.message.reply_text(response)
 
-    if user_input == "Начать обучение":
-        await update.message.reply_text("Вы начали обучение!")
-    elif user_input == "Продолжить обучение":
-        await update.message.reply_text("Вы продолжили обучение!")
-    elif user_input == "Магазин":
-        await update.message.reply_text("Открываем магазин...")
-    elif user_input == "Описание курса":
-        await update.message.reply_text("Описание курса: \nЭтот курс поможет вам...")
-
+# Вебхук
 @app.post("/webhook")
 async def webhook(request: Request):
-    json_data = await request.json()
-    update = Update.de_json(json_data, telegram_bot.bot)
-    await telegram_bot.process_update(update)
-    return {"status": "ok"}
+    try:
+        data = await request.json()
+        update = Update.de_json(data, bot.bot)
+        await bot.process_update(update)
+        return {"status": "ok"}
+    except Exception as e:
+        logging.error(f"Ошибка: {e}")
+        return {"status": "error"}
 
-# Настройка вебхука
-async def set_webhook():
-    webhook_url = f'https://{os.getenv("RENDER_EXTERNAL_HOSTNAME")}/webhook'
-    await telegram_bot.bot.set_webhook(url=webhook_url)
-
+# Инициализация
 @app.on_event("startup")
-async def on_startup():
-    await telegram_bot.initialize()
-    await set_webhook()
-    await telegram_bot.start()
+async def init():
+    await bot.initialize()
+    await bot.bot.set_webhook(WEBHOOK_URL)
+    bot.add_handler(CommandHandler("start", start))
+    bot.add_handler(MessageHandler(filters.TEXT, handle_message))
+    await bot.start()
 
 @app.on_event("shutdown")
-async def on_shutdown():
-    await telegram_bot.stop()
-    await telegram_bot.shutdown()
+async def shutdown():
+    await bot.stop()
+    await bot.shutdown()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
