@@ -1,10 +1,10 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, CallbackContext
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, CallbackContext
 
 # Твой токен
 TOKEN = '7880774464:AAGBEe1pYDmT-NzWvVgKJBfyrCfj7mLSu8A'
 
-# Функция, которая будет отправлять кнопки сразу при первом контакте с ботом
+# Функция, которая будет отправлять приветственное сообщение и кнопки
 async def start(update: Update, context: CallbackContext) -> None:
     # Создаем кнопки
     keyboard = [
@@ -16,8 +16,15 @@ async def start(update: Update, context: CallbackContext) -> None:
     # Создаем разметку для клавиатуры
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # Отправляем сообщение с кнопками
-    await update.message.reply_text('Привет! Я бот для обучения плетению корзин. Выберите одну из опций:', reply_markup=reply_markup)
+    # Отправляем приветственное сообщение с кнопками
+    welcome_text = ("Привет! Я бот для обучения плетению корзин.\n\n"
+                    "В этом боте ты сможешь узнать:\n"
+                    "1. Какие материалы нужны для плетения корзин\n"
+                    "2. Как начать обучение\n"
+                    "3. Где найти полезные ресурсы\n"
+                    "Выберите одну из опций ниже, чтобы начать.")
+
+    await update.message.reply_text(welcome_text, reply_markup=reply_markup)
 
 # Функция для обработки нажатий кнопок
 async def button(update: Update, context: CallbackContext) -> None:
