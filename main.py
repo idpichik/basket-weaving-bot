@@ -4,8 +4,8 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 # Твой токен
 TOKEN = '7880774464:AAGBEe1pYDmT-NzWvVgKJBfyrCfj7mLSu8A'
 
-# Функция, которая будет отправлять кнопки при первом сообщении пользователя
-async def welcome(update: Update, context: CallbackContext) -> None:
+# Функция, которая будет отправлять кнопки сразу при первом контакте с ботом
+async def start(update: Update, context: CallbackContext) -> None:
     # Создаем кнопки
     keyboard = [
         [InlineKeyboardButton("Материалы для плетения", callback_data='materials')],
@@ -42,7 +42,7 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     # Добавляем обработчики команд
-    app.add_handler(MessageHandler(filters.ALL, welcome))  # Ловим все входящие сообщения
+    app.add_handler(CommandHandler("start", start))  # Срабатывает при вводе команды /start
     app.add_handler(CallbackQueryHandler(button))  # Обработка нажатий кнопок
 
     # Запускаем webhook (если используешь Render или другую платформу с webhook)
