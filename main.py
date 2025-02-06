@@ -1,11 +1,12 @@
-from flask import Flask, request
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
-from telegram import KeyboardButton, ReplyKeyboardMarkup
-import logging
+from fastapi import FastAPI, Request
+from pydantic import BaseModel
+from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import json
+import logging
+import uvicorn
 
-app = Flask(__name__)
+app = FastAPI()
 
 TOKEN = '7880774464:AAGBEe1pYDmT-NzWvVgKJBfyrCfj7mLSu8A'
 
@@ -13,14 +14,13 @@ TOKEN = '7880774464:AAGBEe1pYDmT-NzWvVgKJBfyrCfj7mLSu8A'
 telegram_bot = Application.builder().token(TOKEN).build()
 
 # Приветственное сообщение с кнопками меню
-async def start(update: Update, context: CallbackContext):
+async def start(update: Update, context):
     keyboard = [
         [KeyboardButton("Начать обучение")],
         [KeyboardButton("Продолжить обучение")],
         [KeyboardButton("Магазин")],
         [KeyboardButton("Описание курса")]
     ]
-
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
     await update.message.reply_text(
@@ -29,7 +29,7 @@ async def start(update: Update, context: CallbackContext):
     )
 
 # Обработчики команд для кнопок
-async def button_click(update: Update, context: CallbackContext):
+async def button_click(update: Update, context):
     user_input = update.message.text
 
     if user_input == "Начать обучение":
@@ -41,21 +41,27 @@ async def button_click(update: Update, context: CallbackContext):
     elif user_input == "Описание курса":
         await update.message.reply_text("Описание курса: \nЭтот курс поможет вам...")
 
+# Регистрация обработчиков
+telegram_bot.add_handler(CommandHandler("start", start))
+telegram_bot.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_click))
+
 # Синхронный вебхук для обработки сообщений от Telegram
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    json_str = request.get_data(as_text=True)  # Получаем данные как строку
-    update = Update.de_json(json.loads(json_str), telegram_bot.bot)  # Преобразуем строку в словарь
-    telegram_bot.update_queue.put(update)  # Асинхронно обрабатываем обновление
-    return 'OK'
+@app.post("/webhook")
+async def webhook(request: Request):
+    data = await request.json()
+    update = Update.de_json(data, telegram_bot.bot)
+    await telegram_bot.process_update(update)
+    return {"status": "ok"}
 
-def main():
-    # Настройка вебхука
+# Настройка вебхука
+async def set_webhook():
     webhook_url = 'https://basket-weaving-bot.onrender.com/webhook'
-    telegram_bot.bot.set_webhook(url=webhook_url)
+    await telegram_bot.bot.set_webhook(url=webhook_url)
 
-    # Запуск Flask-приложения
-    app.run(host='0.0.0.0', port=10000)
+@app.on_event("startup")
+async def on_startup():
+    await set_webhook()
+    await telegram_bot.initialize()
 
 if __name__ == '__main__':
-    main()
+    uvicorn.run(app, host="0.0.0.0", port=8000)
