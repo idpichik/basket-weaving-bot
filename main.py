@@ -1,4 +1,6 @@
 import logging
+import json
+import os
 from fastapi import FastAPI, Request
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -10,7 +12,11 @@ PORT = 10000
 
 app = FastAPI()
 bot = Application.builder().token(TOKEN).build()
-
+if os.path.exists("users.json"):
+    with open("users.json", "r") as f:
+        started_users = set(json.load(f))
+else:
+    started_users = set()
 # Логирование
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -85,6 +91,11 @@ async def init():
 
 @app.on_event("shutdown")
 async def shutdown():
+    # Сохраняем состояния
+    with open("users.json", "w") as f:
+        json.dump(list(started_users), f)
+    
+    # Останавливаем бота
     await bot.stop()
     await bot.shutdown()
 
