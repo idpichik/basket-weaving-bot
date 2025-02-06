@@ -1,8 +1,9 @@
+import logging
 from flask import Flask, request
-from telegram import Update
+from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import os
-import logging
+import asyncio
 
 TOKEN = '7880774464:AAGBEe1pYDmT-NzWvVgKJBfyrCfj7mLSu8A'
 
@@ -53,11 +54,17 @@ def webhook():
     telegram_bot.process_update(update)
     return 'OK'
 
-if __name__ == "__main__":
-    # Настройка вебхука
-    webhook_url = 'https://<your-render-app-url>/webhook'  # Убедитесь, что правильно указали URL
-    telegram_bot.bot.set_webhook(url=webhook_url)
+async def set_webhook():
+    # Устанавливаем вебхук асинхронно
+    webhook_url = 'https://basket-weaving-bot.onrender.com/webhook'  # Замените на ваш реальный URL
+    await telegram_bot.bot.set_webhook(url=webhook_url)
 
+@app.before_first_request
+def before_first_request():
+    # Устанавливаем вебхук перед первым запросом
+    asyncio.run(set_webhook())
+
+if __name__ == "__main__":
     # Настроим сервер Flask для обработки вебхуков
     setup_bot()
     app.run(host='0.0.0.0', port=10000)  # Порт 10000 для Render
