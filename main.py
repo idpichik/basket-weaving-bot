@@ -1,10 +1,18 @@
-from telegram import KeyboardButton, ReplyKeyboardMarkup
+from flask import Flask, request
+from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
+import os
+import logging
 
 TOKEN = '7880774464:AAGBEe1pYDmT-NzWvVgKJBfyrCfj7mLSu8A'
 
+app = Flask(__name__)
+
+# Инициализация Telegram бота
+telegram_bot = Application.builder().token(TOKEN).build()
+
 # Приветственное сообщение с кнопками меню
-async def start(update, context):
+async def start(update: Update, context):
     # Кнопки для меню
     keyboard = [
         [KeyboardButton("Начать обучение")],
@@ -12,7 +20,6 @@ async def start(update, context):
         [KeyboardButton("Магазин")],
         [KeyboardButton("Описание курса")]
     ]
-
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
     # Отправка приветственного сообщения с кнопками
@@ -21,11 +28,9 @@ async def start(update, context):
         reply_markup=reply_markup
     )
 
-# Обработчики команд для кнопок
-async def button_click(update, context):
-    # Узнаем, какая кнопка была нажата
+# Обработчик кнопок
+async def button_click(update: Update, context):
     user_input = update.message.text
-
     if user_input == "Начать обучение":
         await update.message.reply_text("Вы начали обучение!")
     elif user_input == "Продолжить обучение":
@@ -35,18 +40,24 @@ async def button_click(update, context):
     elif user_input == "Описание курса":
         await update.message.reply_text("Описание курса: \nЭтот курс поможет вам...")
 
-def main():
-    # Инициализация бота
-    app = Application.builder().token(TOKEN).build()
+# Добавление команд в бота
+def setup_bot():
+    telegram_bot.add_handler(CommandHandler("start", start))
+    telegram_bot.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_click))
 
-    # Обработчик команды /start
-    app.add_handler(CommandHandler("start", start))
+# Вебхук обработчик
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    json_str = request.get_data().decode('UTF-8')
+    update = Update.de_json(json_str, telegram_bot.bot)
+    telegram_bot.process_update(update)
+    return 'OK'
 
-    # Обработчик нажатия на кнопки
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_click))
+if __name__ == "__main__":
+    # Настройка вебхука
+    webhook_url = 'https://<your-render-app-url>/webhook'  # Убедитесь, что правильно указали URL
+    telegram_bot.bot.set_webhook(url=webhook_url)
 
-    # Запуск бота
-    app.run_polling()
-
-if __name__ == '__main__':
-    main()
+    # Настроим сервер Flask для обработки вебхуков
+    setup_bot()
+    app.run(host='0.0.0.0', port=10000)  # Порт 10000 для Render
