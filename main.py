@@ -1,7 +1,7 @@
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
-TOKEN = 'YOUR_BOT_API_TOKEN'
+TOKEN = '7880774464:AAGBEe1pYDmT-NzWvVgKJBfyrCfj7mLSu8A'
 
 # Приветственное сообщение с кнопками меню
 async def start(update, context):
