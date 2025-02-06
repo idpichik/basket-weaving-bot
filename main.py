@@ -1,6 +1,7 @@
 from flask import Flask, request
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
+from telegram import KeyboardButton, ReplyKeyboardMarkup
 import logging
 import json
 
@@ -12,7 +13,7 @@ TOKEN = '7880774464:AAGBEe1pYDmT-NzWvVgKJBfyrCfj7mLSu8A'
 telegram_bot = Application.builder().token(TOKEN).build()
 
 # Приветственное сообщение с кнопками меню
-async def start(update, context):
+async def start(update: Update, context: CallbackContext):
     keyboard = [
         [KeyboardButton("Начать обучение")],
         [KeyboardButton("Продолжить обучение")],
@@ -28,7 +29,7 @@ async def start(update, context):
     )
 
 # Обработчики команд для кнопок
-async def button_click(update, context):
+async def button_click(update: Update, context: CallbackContext):
     user_input = update.message.text
 
     if user_input == "Начать обучение":
@@ -45,7 +46,7 @@ async def button_click(update, context):
 def webhook():
     json_str = request.get_data(as_text=True)  # Получаем данные как строку
     update = Update.de_json(json.loads(json_str), telegram_bot.bot)  # Преобразуем строку в словарь
-    telegram_bot.process_new_updates([update])
+    telegram_bot.update_queue.put(update)  # Асинхронно обрабатываем обновление
     return 'OK'
 
 def main():
