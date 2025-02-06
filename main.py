@@ -5,7 +5,7 @@ import logging
 
 app = Flask(__name__)
 
-TOKEN = '7880774464:AAGBEe1pYDmT-NzWvVgKJBfyrCfj7mLSu8A''
+TOKEN = '7880774464:AAGBEe1pYDmT-NzWvVgKJBfyrCfj7mLSu8A'
 
 # Инициализация Telegram бота
 telegram_bot = Application.builder().token(TOKEN).build()
